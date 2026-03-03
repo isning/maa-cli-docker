@@ -33,14 +33,15 @@ jobs:
             system: aarch64-linux
             runner: ubuntu-24.04-arm
             arch: arm64
-          - variant: cryolitia
-            system: x86_64-linux
-            runner: ubuntu-latest
-            arch: amd64
-          - variant: cryolitia
-            system: aarch64-linux
-            runner: ubuntu-24.04-arm
-            arch: arm64
+          # Broken upstream package, disable temporarily
+          # - variant: cryolitia
+          #   system: x86_64-linux
+          #   runner: ubuntu-latest
+          #   arch: amd64
+          # - variant: cryolitia
+          #   system: aarch64-linux
+          #   runner: ubuntu-24.04-arm
+          #   arch: arm64
           - variant: debian-bookworm
             system: x86_64-linux
             runner: ubuntu-latest
