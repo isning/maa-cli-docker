@@ -67,10 +67,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Load Docker image
+        run: docker load < result
+
+      - name: Smoke test
+        run: docker run --rm "${{ steps.vars.outputs.local_tag }}" maa --version
+
       - name: Push arch-specific image to GHCR
         run: |
           ARCH_TAG="${{ env.REGISTRY }}/${{ steps.vars.outputs.image_name }}:${{ matrix.arch }}"
-          docker load < result
           docker tag "${{ steps.vars.outputs.local_tag }}" "${ARCH_TAG}"
           docker push "${ARCH_TAG}"
 
