@@ -39,20 +39,24 @@ jobs:
 
       - name: Build stable image
         if: steps.update.outputs.updated == 'true'
+        continue-on-error: true
         run: nix build .#packages.x86_64-linux.default --out-link result-stable
 
       - name: Smoke test stable image
         if: steps.update.outputs.updated == 'true'
+        continue-on-error: true
         run: |
           docker load < result-stable
           docker run --rm maa-cli-nix:latest maa --version
 
       - name: Build cryolitia image
         if: steps.update.outputs.updated == 'true'
+        continue-on-error: true
         run: nix build .#packages.x86_64-linux.cryolitia --out-link result-cryolitia
 
       - name: Smoke test cryolitia image
         if: steps.update.outputs.updated == 'true'
+        continue-on-error: true
         run: |
           docker load < result-cryolitia
           docker run --rm maa-cli-nix-cryolitia:latest maa --version

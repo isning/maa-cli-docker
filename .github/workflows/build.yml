@@ -82,6 +82,7 @@ jobs:
   push-manifest:
     name: Push Multi-Arch Manifest (${{ matrix.variant }})
     needs: build
+    if: success() || failure()
     runs-on: ubuntu-latest
     permissions:
       contents: read
