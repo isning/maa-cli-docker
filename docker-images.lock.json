@@ -12,21 +12,21 @@
   },
   "amd64": {
     "bookworm": {
-      "imageDigest": "sha256:74a21da88cf4b2e8fde34558376153c5cd80b00ca81da2e659387e76524edc73",
+      "imageDigest": "sha256:74d56e3931e0d5a1dd51f8c8a2466d21de84a271cd3b5a733b803aa91abf4421",
       "sha256": "sha256-R5UjwjvqVQrL+lK0jzBjS2poo3auXyZxu0b0RcMTIpk="
     },
     "trixie": {
-      "imageDigest": "sha256:b29a157cc8540addda9836c23750e389693bf3b6d9a932a55504899e5601a66b",
+      "imageDigest": "sha256:1d3c811171a08a5adaa4a163fbafd96b61b87aa871bbc7aa15431ac275d3d430",
       "sha256": "sha256-DyLaBbm9k4xsBM4KbqKNX/ncfTW1ZRtdxKzNh80qbe8="
     }
   },
   "arm64": {
     "bookworm": {
-      "imageDigest": "sha256:210137e2083cc9cd391a5117ff97e158fb8e69b984063e585732aac86216d60e",
+      "imageDigest": "sha256:74d56e3931e0d5a1dd51f8c8a2466d21de84a271cd3b5a733b803aa91abf4421",
       "sha256": "sha256-QmO1gAOse0JVAUZE22Za8/SNMMGZd6aZWXjFk7x+EUI="
     },
     "trixie": {
-      "imageDigest": "sha256:fe8092b22e202f36de71030f43b52f97ceb79f649d91ed9bdd9d8881a011c1e3",
+      "imageDigest": "sha256:1d3c811171a08a5adaa4a163fbafd96b61b87aa871bbc7aa15431ac275d3d430",
       "sha256": "sha256-z3NzdxH2mtKUXc0eQqmUVCDqlk25uGquRoVuPinOU9M="
     }
   }
