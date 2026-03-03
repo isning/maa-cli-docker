@@ -29,13 +29,13 @@ jobs:
         run: nix flake update
 
       - name: Update Debian image hashes
-        run: nix run .#update-debian-hashes -- "$GITHUB_WORKSPACE/flake.nix"
+        run: nix run .#update-debian-hashes -- "$GITHUB_WORKSPACE/docker-images.lock.json"
 
       - name: Commit updates
         id: update
         run: |
           if [ -n "$(git status --porcelain)" ]; then
-            git add flake.lock flake.nix
+            git add flake.lock docker-images.lock.json
             git commit -m "flake: update flake inputs and Debian image hashes"
             echo "updated=true" >> "$GITHUB_OUTPUT"
           else
