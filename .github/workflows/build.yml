@@ -1,0 +1,78 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  # Image name uses the repository owner (lowercased) and a fixed image name
+  IMAGE_NAME: ${{ github.repository_owner }}/maa-cli-nix
+
+jobs:
+  build:
+    name: Build (${{ matrix.system }})
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: x86_64-linux
+            runner: ubuntu-latest
+            arch: amd64
+          - system: aarch64-linux
+            runner: ubuntu-24.04-arm
+            arch: arm64
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v14
+
+      - name: Build Docker image with Nix
+        run: nix build .#packages.${{ matrix.system }}.default --out-link result
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push arch-specific image to GHCR
+        run: |
+          ARCH_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.arch }}"
+          docker load < result
+          docker tag maa-cli-nix:latest "${ARCH_TAG}"
+          docker push "${ARCH_TAG}"
+
+  push-manifest:
+    name: Push Multi-Arch Manifest
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push multi-arch manifest
+        run: |
+          docker manifest create \
+            "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" \
+            --amend "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:amd64" \
+            --amend "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:arm64"
+          docker manifest push "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
