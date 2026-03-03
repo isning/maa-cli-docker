@@ -80,11 +80,17 @@ jobs:
           docker push "${ARCH_TAG}"
 
   build-debian:
-    name: Build and Push Debian Image
+    name: Build and Push Debian Image (${{ matrix.codename }})
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        codename:
+          - bookworm
+          - trixie
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -102,6 +108,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set image tags
+        id: tags
+        run: |
+          BASE="${{ env.REGISTRY }}/${{ github.repository_owner }}/maa-cli-debian"
+          TAGS="${BASE}:${{ matrix.codename }}"
+          if [ "${{ matrix.codename }}" = "bookworm" ]; then
+            TAGS="${TAGS},${BASE}:latest"
+          fi
+          echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
+
       - name: Build and push multi-arch Debian image
         uses: docker/build-push-action@v6
         with:
@@ -109,7 +125,8 @@ jobs:
           file: ./Dockerfile.debian
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ env.REGISTRY }}/${{ github.repository_owner }}/maa-cli-debian:latest
+          build-args: DEBIAN_CODENAME=${{ matrix.codename }}
+          tags: ${{ steps.tags.outputs.tags }}
 
   push-manifest:
     name: Push Multi-Arch Manifest (${{ matrix.variant }})
