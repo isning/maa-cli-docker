@@ -20,7 +20,7 @@ Built on top of a Debian slim base image. The upstream pre-compiled maa-cli bina
 
 ### `ghcr.io/isning/maa-cli-nix`
 
-Built with Nix using the official [maa-cli package from Nixpkgs](https://search.nixos.org/packages?query=maa-cli). MaaCore is bundled by the Nixpkgs package, but it may be **older** than the version in the Debian image because Nixpkgs follows its own release cadence.
+Built with Nix using the [maa-cli package from Nixpkgs](https://search.nixos.org/packages?query=maa-cli). Both maa-cli and its bundled MaaCore follow the Nixpkgs release cadence and may be **older** than the versions in the Debian image.
 
 | Tag | Description |
 |-----|-------------|
@@ -61,14 +61,14 @@ All images include:
 - **CA certificates** — for HTTPS connections during resource updates
 - **tzdata** — timezone data (default: `Asia/Shanghai`)
 
-The `maa-cli-debian` images bake in MaaCore via `maa install` at image build time, so they always ship the **latest** MaaCore. The `maa-cli-nix` images bundle MaaCore as provided by Nixpkgs, which may be slightly older.
+The `maa-cli-debian` images use the official upstream maa-cli binary and bake in MaaCore via `maa install` at image build time, so they always ship the **latest** versions of both. The `maa-cli-nix` images use the maa-cli and MaaCore versions provided by Nixpkgs, which may be older.
 
 ## Update Cadence
 
 Images are rebuilt automatically every day:
 
 1. **00:00 UTC** — `flake.lock` and `docker-images.lock.json` are updated to the latest maa-cli release and Debian base-image digests.
-2. **01:00 UTC** — Docker images are rebuilt and pushed to GHCR. The `maa-cli-debian` images run `maa install` to bake in the latest MaaCore; the `maa-cli-nix` images receive whatever MaaCore version is bundled in the updated Nixpkgs package.
+2. **01:00 UTC** — Docker images are rebuilt and pushed to GHCR. The `maa-cli-debian` images run `maa install` to bake in the latest MaaCore; the `maa-cli-nix` images receive whatever maa-cli and MaaCore versions are available in the updated Nixpkgs package.
 
 ## Building Locally
 
