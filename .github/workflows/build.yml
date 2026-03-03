@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  # Run daily at 01:00 UTC (after update-flake at 00:00) to keep MaaCore up-to-date
+  schedule:
+    - cron: '0 1 * * *'
   workflow_dispatch:
 
 env:
@@ -13,6 +16,9 @@ jobs:
   build:
     name: Build ${{ matrix.variant }} (${{ matrix.system }})
     runs-on: ${{ matrix.runner }}
+    # On scheduled runs, only rebuild debian variants (to pick up the latest MaaCore via maa install).
+    # Nix-based images (stable, cryolitia) are rebuilt on push when flake.lock changes.
+    if: github.event_name != 'schedule' || startsWith(matrix.variant, 'debian-')
     permissions:
       contents: read
       packages: write
@@ -96,6 +102,15 @@ jobs:
       - name: Load Docker image
         run: docker load < result
 
+      - name: Build final image with MaaCore baked in
+        if: startsWith(matrix.variant, 'debian-')
+        run: |
+          docker build \
+            --build-arg BASE=${{ steps.vars.outputs.local_tag }} \
+            -f Dockerfile.debian \
+            -t ${{ steps.vars.outputs.local_tag }} \
+            .
+
       - name: Smoke test
         run: docker run --rm "${{ steps.vars.outputs.local_tag }}" maa --version
 
@@ -108,7 +123,7 @@ jobs:
   push-manifest:
     name: Push Multi-Arch Manifest (${{ matrix.variant }})
     needs: build
-    if: success() || failure()
+    if: (success() || failure()) && (github.event_name != 'schedule' || startsWith(matrix.variant, 'debian-'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
