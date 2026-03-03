@@ -81,6 +81,9 @@
               url = info.url;
               hash = info.sha256;
             };
+            # The maa-cli tarball extracts files directly (no top-level directory),
+            # so we tell Nix to use the current directory as the source root.
+            sourceRoot = ".";
             installPhase = ''
               mkdir -p $out/bin
               binary=$(find . -name maa -type f | head -n1)
