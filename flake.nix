@@ -38,6 +38,16 @@
           # Specific components included in the image (strictly as needed)
           contents = [ maa-cli-pkg ] ++ commonContents;
 
+          # Nix's bash package installs loadable built-ins under lib/bash/, which causes
+          # buildLayeredImage to create /lib as a directory in the customisation layer.
+          # This shadows Debian's /lib -> usr/lib symlink from the fromImage base, breaking
+          # the ELF interpreter chain for unpatched binaries (dontPatchELF = true) like maa.
+          # Restore the symlink so the standard dynamic linker path resolves correctly.
+          extraCommands = pkgs.lib.optionalString (fromImage != null) ''
+            rm -rf lib
+            ln -s usr/lib lib
+          '';
+
           config = {
             Cmd = [ "${pkgs.bash}/bin/bash" ];
             Env = [

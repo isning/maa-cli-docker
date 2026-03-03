@@ -1,0 +1,8 @@
+# Nix build results
+result
+result-*
+
+# Temporary files
+*.tar
+*.tar.gz
+*.tar.xz
