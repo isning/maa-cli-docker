@@ -90,6 +90,95 @@
             finalImageName = "debian";
             finalImageTag = "${codename}-slim";
           };
+
+        # Script that refreshes the debianBaseImages digests inside flake.nix.
+        # Run with: nix run .#update-debian-hashes [-- path/to/flake.nix]
+        updateDebianHashesPy = pkgs.writeText "update-debian-hashes.py" ''
+          import os, re, json, subprocess, sys, tempfile, hashlib, base64
+
+          flake_nix = sys.argv[1] if len(sys.argv) > 1 else "flake.nix"
+          archs = ["amd64", "arm64"]
+          codenames = ["bookworm", "trixie"]
+          new_values = {}
+
+          for arch in archs:
+              new_values[arch] = {}
+              for codename in codenames:
+                  print(f"Fetching debian:{codename}-slim for {arch}...", flush=True)
+                  result = subprocess.run(
+                      ["skopeo", "inspect", "--override-arch", arch,
+                       f"docker://debian:{codename}-slim"],
+                      capture_output=True, text=True, check=True,
+                  )
+                  image_digest = json.loads(result.stdout)["Digest"]
+                  print(f"  imageDigest: {image_digest}")
+
+                  with tempfile.NamedTemporaryFile(suffix=".tar", delete=False) as f:
+                      tmpfile = f.name
+                  try:
+                      subprocess.run(
+                          ["skopeo", "copy", "--override-arch", arch,
+                           f"docker://debian:{codename}-slim",
+                           f"docker-archive:{tmpfile}:debian:{codename}-slim"],
+                          check=True,
+                      )
+                      with open(tmpfile, "rb") as f:
+                          digest_bytes = hashlib.sha256(f.read()).digest()
+                  finally:
+                      os.unlink(tmpfile)
+                  sha256 = "sha256-" + base64.b64encode(digest_bytes).decode()
+                  print(f"  sha256: {sha256}")
+                  new_values[arch][codename] = {"imageDigest": image_digest, "sha256": sha256}
+
+          with open(flake_nix) as f:
+              content = f.read()
+
+          lines = content.split("\n")
+          new_lines = []
+          in_debian_images = False
+          brace_depth = 0
+          current_arch = None
+          current_codename = None
+          for line in lines:
+              if not in_debian_images:
+                  if re.search(r"debianBaseImages\s*=\s*\{", line):
+                      in_debian_images = True
+                      brace_depth = line.count("{") - line.count("}")
+              else:
+                  brace_depth += line.count("{") - line.count("}")
+                  if brace_depth <= 0:
+                      in_debian_images = False
+                      current_arch = None
+                      current_codename = None
+                  else:
+                      m = re.match(r"\s+(amd64|arm64)\s*=\s*\{", line)
+                      if m:
+                          current_arch = m.group(1)
+                      m = re.match(r"\s+(bookworm|trixie)\s*=\s*\{", line)
+                      if m:
+                          current_codename = m.group(1)
+                      m = re.match(r"(\s+imageDigest\s*=\s*)\"sha256:[a-f0-9]+\"(;)", line)
+                      if m and current_arch and current_codename:
+                          v = new_values[current_arch][current_codename]
+                          line = m.group(1) + '"' + v["imageDigest"] + '"' + m.group(2)
+                      m = re.match(r"(\s+sha256\s*=\s*)\"sha256-[A-Za-z0-9+/=]+\"(;)", line)
+                      if m and current_arch and current_codename:
+                          v = new_values[current_arch][current_codename]
+                          line = m.group(1) + '"' + v["sha256"] + '"' + m.group(2)
+              new_lines.append(line)
+
+          with open(flake_nix, "w") as f:
+              f.write("\n".join(new_lines))
+          print("Updated flake.nix successfully!")
+        '';
+
+        update-debian-hashes = pkgs.writeShellApplication {
+          name = "update-debian-hashes";
+          runtimeInputs = with pkgs; [ skopeo python3 ];
+          text = ''
+            python3 ${updateDebianHashesPy} "''${1:-flake.nix}"
+          '';
+        };
       in {
         default = makeImage {
           name = "maa-cli-nix";
@@ -112,6 +201,8 @@
           maa-cli-pkg = pkgs.maa-cli;
           fromImage = pullDebianBase "trixie";
         };
+
+        inherit update-debian-hashes;
       }
     );
   };
