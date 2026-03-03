@@ -31,7 +31,7 @@
           tzdata        # Provides timezone support
         ];
 
-        makeImage = { name, maa-cli-pkg, fromImage ? null }: pkgs.dockerTools.buildLayeredImage {
+        makeImage = { name, maa-cli-pkg, fromImage ? null, entrypoint ? null }: pkgs.dockerTools.buildLayeredImage {
           inherit name fromImage;
           tag = "latest";
 
@@ -40,6 +40,7 @@
 
           config = {
             Cmd = [ "${pkgs.bash}/bin/bash" ];
+            Entrypoint = if entrypoint != null then [ "${entrypoint}" ] else null;
             Env = [
               "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
               # Override at runtime with -e TZ=<your-timezone> if needed
@@ -52,7 +53,9 @@
 
         # Per-arch, per-codename content-addressed digests for debian slim base images.
         # Pinned in docker-images.lock.json — update with: nix run .#update-debian-hashes
-        debianBaseImages = builtins.fromJSON (builtins.readFile ./docker-images.lock.json);
+        lock = builtins.fromJSON (builtins.readFile ./docker-images.lock.json);
+        debianBaseImages = builtins.removeAttrs lock [ "maa-cli" ];
+        maaCliLock = lock.maa-cli;
 
         pullDebianBase = codename:
           let
@@ -66,18 +69,64 @@
             finalImageTag = "${codename}-slim";
           };
 
-        # Script that refreshes docker-images.lock.json with current Debian image digests.
+        # Fetch the official pre-compiled maa-cli binary from upstream releases.
+        # The gnu variant is used as Debian provides glibc in the base image.
+        fetchedMaaCli =
+          let
+            goarch = { "x86_64-linux" = "amd64"; "aarch64-linux" = "arm64"; }.${system};
+            info = maaCliLock.${goarch};
+          in pkgs.stdenvNoCC.mkDerivation {
+            pname = "maa-cli-upstream";
+            version = maaCliLock.version;
+            src = pkgs.fetchurl {
+              url = info.url;
+              hash = info.sha256;
+            };
+            installPhase = ''
+              mkdir -p $out/bin
+              binary=$(find . -name maa -type f | head -n1)
+              if [ -z "$binary" ]; then
+                echo "Error: maa binary not found in tarball" >&2
+                exit 1
+              fi
+              install -m755 "$binary" $out/bin/maa
+            '';
+          };
+
+        # Entrypoint for Debian images: installs MaaCore on first container startup.
+        # Set MAA_SKIP_INSTALL=1 to bypass (e.g. for smoke tests).
+        debianEntrypoint = pkgs.writeShellScript "maa-entrypoint" ''
+          if [ -z "''${MAA_SKIP_INSTALL:-}" ]; then
+            MAA_DATA="''${XDG_DATA_HOME:-''${HOME:-/root}/.local/share}/maa"
+            if [ ! -d "''${MAA_DATA}/MaaCore" ]; then
+              echo "Installing MaaCore..." >&2
+              maa install
+            fi
+          fi
+          exec "$@"
+        '';
+
+        # Script that refreshes docker-images.lock.json with current Debian image digests
+        # and the latest maa-cli release info.
         # Run with: nix run .#update-debian-hashes [-- path/to/docker-images.lock.json]
         updateDebianHashesPy = pkgs.writeText "update-debian-hashes.py" ''
-          import base64, hashlib, json, os, subprocess, sys, tempfile
+          import base64
+          import binascii
+          import hashlib
+          import json
+          import os
+          import subprocess
+          import sys
+          import tempfile
+          import urllib.request
 
           lock_file = sys.argv[1] if len(sys.argv) > 1 else "docker-images.lock.json"
           archs = ["amd64", "arm64"]
           codenames = ["bookworm", "trixie"]
-          new_values = {}
+          debian_values = {}
 
           for arch in archs:
-              new_values[arch] = {}
+              debian_values[arch] = {}
               for codename in codenames:
                   print(f"Fetching debian:{codename}-slim for {arch}...", flush=True)
                   result = subprocess.run(
@@ -103,10 +152,30 @@
                       os.unlink(tmpfile)
                   sha256 = "sha256-" + base64.b64encode(digest_bytes).decode()
                   print(f"  sha256: {sha256}")
-                  new_values[arch][codename] = {"imageDigest": image_digest, "sha256": sha256}
+                  debian_values[arch][codename] = {"imageDigest": image_digest, "sha256": sha256}
 
+          print("Fetching maa-cli version info...", flush=True)
+          version_url = "https://raw.githubusercontent.com/MaaAssistantArknights/maa-cli/version/stable.txt"
+          with urllib.request.urlopen(version_url) as resp:
+              version_data = {}
+              for line in resp.read().decode().splitlines():
+                  if "=" in line and not line.startswith("#"):
+                      k, v = line.split("=", 1)
+                      version_data[k] = v
+          version = version_data["VERSION"]
+          print(f"  version: {version}")
+          maa_cli_info = {"version": version}
+          for goarch, target in [("amd64", "X86_64_UNKNOWN_LINUX_GNU"), ("arm64", "AARCH64_UNKNOWN_LINUX_GNU")]:
+              name = version_data[f"{target}_NAME"]
+              sha256 = "sha256-" + base64.b64encode(binascii.unhexlify(version_data[f"{target}_SHA256"])).decode()
+              url = f"https://github.com/MaaAssistantArknights/maa-cli/releases/download/v{version}/{name}"
+              print(f"  {goarch}: {name}")
+              maa_cli_info[goarch] = {"url": url, "sha256": sha256}
+
+          lock_data = {"maa-cli": maa_cli_info}
+          lock_data.update(debian_values)
           with open(lock_file, "w") as f:
-              json.dump(new_values, f, indent=2)
+              json.dump(lock_data, f, indent=2)
               f.write("\n")
           print(f"Updated {lock_file} successfully!")
         '';
@@ -131,14 +200,16 @@
 
         debian-bookworm = makeImage {
           name = "maa-cli-debian";
-          maa-cli-pkg = pkgs.maa-cli;
+          maa-cli-pkg = fetchedMaaCli;
           fromImage = pullDebianBase "bookworm";
+          entrypoint = debianEntrypoint;
         };
 
         debian-trixie = makeImage {
           name = "maa-cli-debian";
-          maa-cli-pkg = pkgs.maa-cli;
+          maa-cli-pkg = fetchedMaaCli;
           fromImage = pullDebianBase "trixie";
+          entrypoint = debianEntrypoint;
         };
 
         inherit update-debian-hashes;

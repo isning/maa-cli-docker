@@ -76,7 +76,7 @@ jobs:
         continue-on-error: true
         run: |
           docker load < result-debian-bookworm
-          docker run --rm maa-cli-debian:latest maa --version
+          docker run --rm -e MAA_SKIP_INSTALL=1 maa-cli-debian:latest maa --version
 
       - name: Push to main
         if: steps.update.outputs.updated == 'true'
