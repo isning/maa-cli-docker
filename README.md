@@ -82,8 +82,8 @@ nix build .#packages.x86_64-linux.debian-bookworm
 docker load < result
 docker run --rm maa-cli-debian:latest maa --version
 
-# Update Debian base-image digests and maa-cli hashes
-nix run .#update-debian-hashes
+# Update Debian base-image digests and maa-cli version
+nix run .#update-images-lock
 ```
 
 Available Nix package attributes:
@@ -93,4 +93,4 @@ Available Nix package attributes:
 | `default` | Nix-built image using Nixpkgs maa-cli |
 | `debian-bookworm` | Debian bookworm slim + upstream maa-cli binary |
 | `debian-trixie` | Debian trixie slim + upstream maa-cli binary |
-| `update-debian-hashes` | Script to refresh `docker-images.lock.json` |
+| `update-images-lock` | Script to refresh `docker-images.lock.json` (Debian base-image digests and upstream maa-cli version) |

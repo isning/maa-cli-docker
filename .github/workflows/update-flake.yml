@@ -1,7 +1,8 @@
 name: Update flake inputs
 
 on:
-  # Run every day at 00:00 UTC to keep cryolitia up to date
+  # Run every day at 00:00 UTC to keep flake inputs, Debian base images,
+  # and the upstream maa-cli binary (for Debian images) up to date
   schedule:
     - cron: '0 0 * * *'
   workflow_dispatch:
@@ -28,15 +29,15 @@ jobs:
       - name: Update flake.lock
         run: nix flake update
 
-      - name: Update Debian image hashes
-        run: nix run .#update-debian-hashes -- "$GITHUB_WORKSPACE/docker-images.lock.json"
+      - name: Update Debian image hashes and maa-cli version
+        run: nix run .#update-images-lock -- "$GITHUB_WORKSPACE/docker-images.lock.json"
 
       - name: Commit updates
         id: update
         run: |
           if [ -n "$(git status --porcelain)" ]; then
             git add flake.lock docker-images.lock.json
-            git commit -m "flake: update flake inputs and Debian image hashes"
+            git commit -m "flake: update flake inputs, Debian image hashes, and maa-cli version"
             echo "updated=true" >> "$GITHUB_OUTPUT"
           else
             echo "updated=false" >> "$GITHUB_OUTPUT"

@@ -61,7 +61,7 @@
         };
 
         # Per-arch, per-codename content-addressed digests for debian slim base images.
-        # Pinned in docker-images.lock.json — update with: nix run .#update-debian-hashes
+        # Pinned in docker-images.lock.json — update with: nix run .#update-images-lock
         lock = builtins.fromJSON (builtins.readFile ./docker-images.lock.json);
         debianBaseImages = builtins.removeAttrs lock [ "maa-cli" ];
         maaCliLock = lock.maa-cli;
@@ -112,8 +112,8 @@
 
         # Script that refreshes docker-images.lock.json with current Debian image digests
         # and the latest maa-cli release info.
-        # Run with: nix run .#update-debian-hashes [-- path/to/docker-images.lock.json]
-        updateDebianHashesPy = pkgs.writeText "update-debian-hashes.py" ''
+        # Run with: nix run .#update-images-lock [-- path/to/docker-images.lock.json]
+        updateImagesLockPy = pkgs.writeText "update-images-lock.py" ''
           import base64
           import binascii
           import hashlib
@@ -184,11 +184,11 @@
           print(f"Updated {lock_file} successfully!")
         '';
 
-        update-debian-hashes = pkgs.writeShellApplication {
-          name = "update-debian-hashes";
+        update-images-lock = pkgs.writeShellApplication {
+          name = "update-images-lock";
           runtimeInputs = with pkgs; [ skopeo python3 ];
           text = ''
-            python3 ${updateDebianHashesPy} "''${1:-docker-images.lock.json}"
+            python3 ${updateImagesLockPy} "''${1:-docker-images.lock.json}"
           '';
         };
       in {
@@ -214,7 +214,7 @@
           fromImage = pullDebianBase "trixie";
         };
 
-        inherit update-debian-hashes;
+        inherit update-images-lock;
       }
     );
   };
