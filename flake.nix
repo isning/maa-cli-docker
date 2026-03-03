@@ -22,7 +22,7 @@
         pkgs = nixpkgs.legacyPackages.${system};
         nurPkgs = nur-packages.packages.${system};
 
-        # Common image layers shared between stable and nightly images
+        # Common image layers shared between stable and cryolitia images
         commonContents = with pkgs; [
           android-tools # Required: provides adb for connecting to Redroid
           coreutils     # Provides sleep, echo, etc. for K8s startup scripts
@@ -31,8 +31,8 @@
           tzdata        # Provides timezone support
         ];
 
-        makeImage = { name, maa-cli-pkg }: pkgs.dockerTools.buildLayeredImage {
-          inherit name;
+        makeImage = { name, maa-cli-pkg, fromImage ? null }: pkgs.dockerTools.buildLayeredImage {
+          inherit name fromImage;
           tag = "latest";
 
           # Specific components included in the image (strictly as needed)
@@ -49,16 +49,154 @@
             ];
           };
         };
+
+        # Per-arch, per-codename content-addressed digests for debian slim base images.
+        # Pinned in docker-images.lock.json — update with: nix run .#update-debian-hashes
+        lock = builtins.fromJSON (builtins.readFile ./docker-images.lock.json);
+        debianBaseImages = builtins.removeAttrs lock [ "maa-cli" ];
+        maaCliLock = lock.maa-cli;
+
+        pullDebianBase = codename:
+          let
+            # Map Nix system to Docker architecture name (same as go.GOARCH)
+            goarch = { "x86_64-linux" = "amd64"; "aarch64-linux" = "arm64"; }.${system};
+            info = debianBaseImages.${goarch}.${codename};
+          in pkgs.dockerTools.pullImage {
+            imageName = "debian";
+            inherit (info) imageDigest sha256;
+            finalImageName = "debian";
+            finalImageTag = "${codename}-slim";
+          };
+
+        # Fetch the official pre-compiled maa-cli binary from upstream releases.
+        # The gnu variant is used as Debian provides glibc in the base image.
+        fetchedMaaCli =
+          let
+            goarch = { "x86_64-linux" = "amd64"; "aarch64-linux" = "arm64"; }.${system};
+            info = maaCliLock.${goarch};
+          in pkgs.stdenvNoCC.mkDerivation {
+            pname = "maa-cli-upstream";
+            version = maaCliLock.version;
+            src = pkgs.fetchurl {
+              url = info.url;
+              hash = info.sha256;
+            };
+            installPhase = ''
+              mkdir -p $out/bin
+              binary=$(find . -name maa -type f | head -n1)
+              if [ -z "$binary" ]; then
+                echo "Error: maa binary not found in tarball" >&2
+                exit 1
+              fi
+              install -m755 "$binary" $out/bin/maa
+            '';
+          };
+
+        # Script that refreshes docker-images.lock.json with current Debian image digests
+        # and the latest maa-cli release info.
+        # Run with: nix run .#update-debian-hashes [-- path/to/docker-images.lock.json]
+        updateDebianHashesPy = pkgs.writeText "update-debian-hashes.py" ''
+          import base64
+          import binascii
+          import hashlib
+          import json
+          import os
+          import subprocess
+          import sys
+          import tempfile
+          import urllib.request
+
+          lock_file = sys.argv[1] if len(sys.argv) > 1 else "docker-images.lock.json"
+          archs = ["amd64", "arm64"]
+          codenames = ["bookworm", "trixie"]
+          debian_values = {}
+
+          for arch in archs:
+              debian_values[arch] = {}
+              for codename in codenames:
+                  print(f"Fetching debian:{codename}-slim for {arch}...", flush=True)
+                  result = subprocess.run(
+                      ["skopeo", "inspect", "--override-arch", arch,
+                       f"docker://debian:{codename}-slim"],
+                      capture_output=True, text=True, check=True,
+                  )
+                  image_digest = json.loads(result.stdout)["Digest"]
+                  print(f"  imageDigest: {image_digest}")
+
+                  with tempfile.NamedTemporaryFile(suffix=".tar", delete=False) as f:
+                      tmpfile = f.name
+                  try:
+                      subprocess.run(
+                          ["skopeo", "copy", "--override-arch", arch,
+                           f"docker://debian:{codename}-slim",
+                           f"docker-archive:{tmpfile}:debian:{codename}-slim"],
+                          check=True,
+                      )
+                      with open(tmpfile, "rb") as f:
+                          digest_bytes = hashlib.sha256(f.read()).digest()
+                  finally:
+                      os.unlink(tmpfile)
+                  sha256 = "sha256-" + base64.b64encode(digest_bytes).decode()
+                  print(f"  sha256: {sha256}")
+                  debian_values[arch][codename] = {"imageDigest": image_digest, "sha256": sha256}
+
+          print("Fetching maa-cli version info...", flush=True)
+          version_url = "https://raw.githubusercontent.com/MaaAssistantArknights/maa-cli/version/stable.txt"
+          with urllib.request.urlopen(version_url) as resp:
+              version_data = {}
+              for line in resp.read().decode().splitlines():
+                  if "=" in line and not line.startswith("#"):
+                      k, v = line.split("=", 1)
+                      version_data[k] = v
+          version = version_data["VERSION"]
+          print(f"  version: {version}")
+          maa_cli_info = {"version": version}
+          for goarch, target in [("amd64", "X86_64_UNKNOWN_LINUX_GNU"), ("arm64", "AARCH64_UNKNOWN_LINUX_GNU")]:
+              name = version_data[f"{target}_NAME"]
+              sha256 = "sha256-" + base64.b64encode(binascii.unhexlify(version_data[f"{target}_SHA256"])).decode()
+              url = f"https://github.com/MaaAssistantArknights/maa-cli/releases/download/v{version}/{name}"
+              print(f"  {goarch}: {name}")
+              maa_cli_info[goarch] = {"url": url, "sha256": sha256}
+
+          lock_data = {"maa-cli": maa_cli_info}
+          lock_data.update(debian_values)
+          with open(lock_file, "w") as f:
+              json.dump(lock_data, f, indent=2)
+              f.write("\n")
+          print(f"Updated {lock_file} successfully!")
+        '';
+
+        update-debian-hashes = pkgs.writeShellApplication {
+          name = "update-debian-hashes";
+          runtimeInputs = with pkgs; [ skopeo python3 ];
+          text = ''
+            python3 ${updateDebianHashesPy} "''${1:-docker-images.lock.json}"
+          '';
+        };
       in {
         default = makeImage {
           name = "maa-cli-nix";
           maa-cli-pkg = pkgs.maa-cli; # Official maa-cli maintained in Nixpkgs
         };
 
-        nightly = makeImage {
-          name = "maa-cli-nix-nightly";
-          maa-cli-pkg = nurPkgs.maa-cli-nightly; # Nightly build from NUR (Beta Rust toolchain)
+        cryolitia = makeImage {
+          name = "maa-cli-nix-cryolitia";
+          maa-cli-pkg = nurPkgs.maa-cli; # Cryolitia build from NUR (updates faster than nixpkgs)
         };
+
+        debian-bookworm = makeImage {
+          name = "maa-cli-debian";
+          maa-cli-pkg = fetchedMaaCli;
+          fromImage = pullDebianBase "bookworm";
+        };
+
+        debian-trixie = makeImage {
+          name = "maa-cli-debian";
+          maa-cli-pkg = fetchedMaaCli;
+          fromImage = pullDebianBase "trixie";
+        };
+
+        inherit update-debian-hashes;
       }
     );
   };

@@ -1,14 +1,14 @@
-name: Update flake.lock
+name: Update flake inputs
 
 on:
-  # Run every day at 00:00 UTC to keep nightly up to date
+  # Run every day at 00:00 UTC to keep cryolitia up to date
   schedule:
     - cron: '0 0 * * *'
   workflow_dispatch:
 
 jobs:
   update:
-    name: Update flake.lock
+    name: Update flake inputs
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -26,12 +26,17 @@ jobs:
           git config user.email "${{ github.actor }}@users.noreply.github.com"
 
       - name: Update flake.lock
+        run: nix flake update
+
+      - name: Update Debian image hashes
+        run: nix run .#update-debian-hashes -- "$GITHUB_WORKSPACE/docker-images.lock.json"
+
+      - name: Commit updates
         id: update
         run: |
-          BEFORE=$(git rev-parse HEAD)
-          nix flake update --commit-lock-file
-          AFTER=$(git rev-parse HEAD)
-          if [ "$BEFORE" != "$AFTER" ]; then
+          if [ -n "$(git status --porcelain)" ]; then
+            git add flake.lock docker-images.lock.json
+            git commit -m "flake: update flake inputs and Debian image hashes"
             echo "updated=true" >> "$GITHUB_OUTPUT"
           else
             echo "updated=false" >> "$GITHUB_OUTPUT"
@@ -39,23 +44,39 @@ jobs:
 
       - name: Build stable image
         if: steps.update.outputs.updated == 'true'
+        continue-on-error: true
         run: nix build .#packages.x86_64-linux.default --out-link result-stable
 
       - name: Smoke test stable image
         if: steps.update.outputs.updated == 'true'
+        continue-on-error: true
         run: |
           docker load < result-stable
           docker run --rm maa-cli-nix:latest maa --version
 
-      - name: Build nightly image
+      - name: Build cryolitia image
         if: steps.update.outputs.updated == 'true'
-        run: nix build .#packages.x86_64-linux.nightly --out-link result-nightly
+        continue-on-error: true
+        run: nix build .#packages.x86_64-linux.cryolitia --out-link result-cryolitia
 
-      - name: Smoke test nightly image
+      - name: Smoke test cryolitia image
         if: steps.update.outputs.updated == 'true'
+        continue-on-error: true
         run: |
-          docker load < result-nightly
-          docker run --rm maa-cli-nix-nightly:latest maa --version
+          docker load < result-cryolitia
+          docker run --rm maa-cli-nix-cryolitia:latest maa --version
+
+      - name: Build debian-bookworm image
+        if: steps.update.outputs.updated == 'true'
+        continue-on-error: true
+        run: nix build .#packages.x86_64-linux.debian-bookworm --out-link result-debian-bookworm
+
+      - name: Smoke test debian-bookworm image
+        if: steps.update.outputs.updated == 'true'
+        continue-on-error: true
+        run: |
+          docker load < result-debian-bookworm
+          docker run --rm maa-cli-debian:latest maa --version
 
       - name: Push to main
         if: steps.update.outputs.updated == 'true'

@@ -1,0 +1,6 @@
+# Extends the Nix-built base image (maa-cli binary + Debian userland) and installs
+# MaaCore and resources at image build time via `maa install`.
+# Rebuilt daily so MaaCore and resources stay up-to-date.
+ARG BASE
+FROM $BASE
+RUN maa install || { echo "ERROR: maa install failed — MaaCore could not be downloaded." >&2; exit 1; }

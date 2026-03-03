@@ -28,11 +28,27 @@ jobs:
             system: aarch64-linux
             runner: ubuntu-24.04-arm
             arch: arm64
-          - variant: nightly
+          - variant: cryolitia
             system: x86_64-linux
             runner: ubuntu-latest
             arch: amd64
-          - variant: nightly
+          - variant: cryolitia
+            system: aarch64-linux
+            runner: ubuntu-24.04-arm
+            arch: arm64
+          - variant: debian-bookworm
+            system: x86_64-linux
+            runner: ubuntu-latest
+            arch: amd64
+          - variant: debian-bookworm
+            system: aarch64-linux
+            runner: ubuntu-24.04-arm
+            arch: arm64
+          - variant: debian-trixie
+            system: x86_64-linux
+            runner: ubuntu-latest
+            arch: amd64
+          - variant: debian-trixie
             system: aarch64-linux
             runner: ubuntu-24.04-arm
             arch: arm64
@@ -47,14 +63,24 @@ jobs:
       - name: Set image variables
         id: vars
         run: |
-          if [ "${{ matrix.variant }}" = "stable" ]; then
+          VARIANT="${{ matrix.variant }}"
+          ARCH="${{ matrix.arch }}"
+          if [ "$VARIANT" = "stable" ]; then
             echo "nix_attr=default" >> "$GITHUB_OUTPUT"
             echo "image_name=${{ github.repository_owner }}/maa-cli-nix" >> "$GITHUB_OUTPUT"
             echo "local_tag=maa-cli-nix:latest" >> "$GITHUB_OUTPUT"
+            echo "arch_tag_suffix=${ARCH}" >> "$GITHUB_OUTPUT"
+          elif [ "$VARIANT" = "cryolitia" ]; then
+            echo "nix_attr=cryolitia" >> "$GITHUB_OUTPUT"
+            echo "image_name=${{ github.repository_owner }}/maa-cli-nix-cryolitia" >> "$GITHUB_OUTPUT"
+            echo "local_tag=maa-cli-nix-cryolitia:latest" >> "$GITHUB_OUTPUT"
+            echo "arch_tag_suffix=${ARCH}" >> "$GITHUB_OUTPUT"
           else
-            echo "nix_attr=nightly" >> "$GITHUB_OUTPUT"
-            echo "image_name=${{ github.repository_owner }}/maa-cli-nix-nightly" >> "$GITHUB_OUTPUT"
-            echo "local_tag=maa-cli-nix-nightly:latest" >> "$GITHUB_OUTPUT"
+            CODENAME="${VARIANT#debian-}"
+            echo "nix_attr=${VARIANT}" >> "$GITHUB_OUTPUT"
+            echo "image_name=${{ github.repository_owner }}/maa-cli-debian" >> "$GITHUB_OUTPUT"
+            echo "local_tag=maa-cli-debian:latest" >> "$GITHUB_OUTPUT"
+            echo "arch_tag_suffix=${CODENAME}-${ARCH}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build Docker image with Nix
@@ -75,13 +101,14 @@ jobs:
 
       - name: Push arch-specific image to GHCR
         run: |
-          ARCH_TAG="${{ env.REGISTRY }}/${{ steps.vars.outputs.image_name }}:${{ matrix.arch }}"
+          ARCH_TAG="${{ env.REGISTRY }}/${{ steps.vars.outputs.image_name }}:${{ steps.vars.outputs.arch_tag_suffix }}"
           docker tag "${{ steps.vars.outputs.local_tag }}" "${ARCH_TAG}"
           docker push "${ARCH_TAG}"
 
   push-manifest:
     name: Push Multi-Arch Manifest (${{ matrix.variant }})
     needs: build
+    if: success() || failure()
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -91,16 +118,29 @@ jobs:
       matrix:
         variant:
           - stable
-          - nightly
+          - cryolitia
+          - debian-bookworm
+          - debian-trixie
 
     steps:
-      - name: Set image name
+      - name: Set manifest variables
         id: vars
         run: |
-          if [ "${{ matrix.variant }}" = "stable" ]; then
-            echo "image_name=${{ github.repository_owner }}/maa-cli-nix" >> "$GITHUB_OUTPUT"
+          BASE="${{ env.REGISTRY }}/${{ github.repository_owner }}"
+          VARIANT="${{ matrix.variant }}"
+          if [ "$VARIANT" = "stable" ]; then
+            echo "manifest_tag=${BASE}/maa-cli-nix:latest" >> "$GITHUB_OUTPUT"
+            echo "amd64_tag=${BASE}/maa-cli-nix:amd64" >> "$GITHUB_OUTPUT"
+            echo "arm64_tag=${BASE}/maa-cli-nix:arm64" >> "$GITHUB_OUTPUT"
+          elif [ "$VARIANT" = "cryolitia" ]; then
+            echo "manifest_tag=${BASE}/maa-cli-nix-cryolitia:latest" >> "$GITHUB_OUTPUT"
+            echo "amd64_tag=${BASE}/maa-cli-nix-cryolitia:amd64" >> "$GITHUB_OUTPUT"
+            echo "arm64_tag=${BASE}/maa-cli-nix-cryolitia:arm64" >> "$GITHUB_OUTPUT"
           else
-            echo "image_name=${{ github.repository_owner }}/maa-cli-nix-nightly" >> "$GITHUB_OUTPUT"
+            CODENAME="${VARIANT#debian-}"
+            echo "manifest_tag=${BASE}/maa-cli-debian:${CODENAME}" >> "$GITHUB_OUTPUT"
+            echo "amd64_tag=${BASE}/maa-cli-debian:${CODENAME}-amd64" >> "$GITHUB_OUTPUT"
+            echo "arm64_tag=${BASE}/maa-cli-debian:${CODENAME}-arm64" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Log in to GHCR
@@ -113,7 +153,17 @@ jobs:
       - name: Create and push multi-arch manifest
         run: |
           docker manifest create \
-            "${{ env.REGISTRY }}/${{ steps.vars.outputs.image_name }}:latest" \
-            --amend "${{ env.REGISTRY }}/${{ steps.vars.outputs.image_name }}:amd64" \
-            --amend "${{ env.REGISTRY }}/${{ steps.vars.outputs.image_name }}:arm64"
-          docker manifest push "${{ env.REGISTRY }}/${{ steps.vars.outputs.image_name }}:latest"
+            "${{ steps.vars.outputs.manifest_tag }}" \
+            --amend "${{ steps.vars.outputs.amd64_tag }}" \
+            --amend "${{ steps.vars.outputs.arm64_tag }}"
+          docker manifest push "${{ steps.vars.outputs.manifest_tag }}"
+
+      - name: Also tag Debian bookworm as latest
+        if: matrix.variant == 'debian-bookworm'
+        run: |
+          BASE="${{ env.REGISTRY }}/${{ github.repository_owner }}"
+          docker manifest create \
+            "${BASE}/maa-cli-debian:latest" \
+            --amend "${{ steps.vars.outputs.amd64_tag }}" \
+            --amend "${{ steps.vars.outputs.arm64_tag }}"
+          docker manifest push "${BASE}/maa-cli-debian:latest"
