@@ -150,7 +150,7 @@ jobs:
       matrix:
         variant:
           - stable
-          - cryolitia
+          # - cryolitia
           - debian-bookworm
           - debian-trixie
 
