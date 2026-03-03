@@ -84,6 +84,11 @@
             # The maa-cli tarball extracts files directly (no top-level directory),
             # so we tell Nix to use the current directory as the source root.
             sourceRoot = ".";
+            # This is a pre-compiled upstream binary targeting the standard GNU/Linux ABI
+            # (interpreter /lib64/ld-linux-x86-64.so.2). Skipping ELF patching preserves
+            # that interpreter so the Debian base image's glibc is used at runtime instead
+            # of a Nix-store glibc that would not exist in the image.
+            dontPatchELF = true;
             installPhase = ''
               mkdir -p $out/bin
               binary=$(find . -name maa -type f | head -n1)
