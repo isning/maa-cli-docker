@@ -18,7 +18,6 @@ jobs:
     runs-on: ${{ matrix.runner }}
     # On scheduled runs, only rebuild debian variants (to pick up the latest MaaCore via maa install).
     # Nix-based images (stable, cryolitia) are rebuilt on push when flake.lock changes.
-    if: github.event_name != 'schedule' || startsWith(matrix.variant, 'debian-')
     permissions:
       contents: read
       packages: write
@@ -60,13 +59,25 @@ jobs:
             arch: arm64
 
     steps:
+      - name: Check if should run
+        id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" && ! "${{ matrix.variant }}" =~ ^debian- ]]; then
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout repository
+        if: steps.check.outputs.should_run == 'true'
         uses: actions/checkout@v4
 
       - name: Install Nix
+        if: steps.check.outputs.should_run == 'true'
         uses: DeterminateSystems/nix-installer-action@v14
 
       - name: Set image variables
+        if: steps.check.outputs.should_run == 'true'
         id: vars
         run: |
           VARIANT="${{ matrix.variant }}"
@@ -90,9 +101,11 @@ jobs:
           fi
 
       - name: Build Docker image with Nix
+        if: steps.check.outputs.should_run == 'true'
         run: nix build .#packages.${{ matrix.system }}.${{ steps.vars.outputs.nix_attr }} --out-link result
 
       - name: Log in to GHCR
+        if: steps.check.outputs.should_run == 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -100,10 +113,11 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Load Docker image
+        if: steps.check.outputs.should_run == 'true'
         run: docker load < result
 
       - name: Build final image with MaaCore baked in
-        if: startsWith(matrix.variant, 'debian-')
+        if: steps.check.outputs.should_run == 'true' && startsWith(matrix.variant, 'debian-')
         run: |
           docker build \
             --build-arg BASE=${{ steps.vars.outputs.local_tag }} \
@@ -112,9 +126,11 @@ jobs:
             .
 
       - name: Smoke test
+        if: steps.check.outputs.should_run == 'true'
         run: docker run --rm "${{ steps.vars.outputs.local_tag }}" maa --version
 
       - name: Push arch-specific image to GHCR
+        if: steps.check.outputs.should_run == 'true'
         run: |
           ARCH_TAG="${{ env.REGISTRY }}/${{ steps.vars.outputs.image_name }}:${{ steps.vars.outputs.arch_tag_suffix }}"
           docker tag "${{ steps.vars.outputs.local_tag }}" "${ARCH_TAG}"
@@ -123,7 +139,7 @@ jobs:
   push-manifest:
     name: Push Multi-Arch Manifest (${{ matrix.variant }})
     needs: build
-    if: (success() || failure()) && (github.event_name != 'schedule' || startsWith(matrix.variant, 'debian-'))
+    if: success() || failure()
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -138,7 +154,17 @@ jobs:
           - debian-trixie
 
     steps:
+      - name: Check if should run
+        id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" && ! "${{ matrix.variant }}" =~ ^debian- ]]; then
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set manifest variables
+        if: steps.check.outputs.should_run == 'true'
         id: vars
         run: |
           BASE="${{ env.REGISTRY }}/${{ github.repository_owner }}"
@@ -159,6 +185,7 @@ jobs:
           fi
 
       - name: Log in to GHCR
+        if: steps.check.outputs.should_run == 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -166,6 +193,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create and push multi-arch manifest
+        if: steps.check.outputs.should_run == 'true'
         run: |
           docker manifest create \
             "${{ steps.vars.outputs.manifest_tag }}" \
@@ -174,7 +202,7 @@ jobs:
           docker manifest push "${{ steps.vars.outputs.manifest_tag }}"
 
       - name: Also tag Debian bookworm as latest
-        if: matrix.variant == 'debian-bookworm'
+        if: steps.check.outputs.should_run == 'true' && matrix.variant == 'debian-bookworm'
         run: |
           BASE="${{ env.REGISTRY }}/${{ github.repository_owner }}"
           docker manifest create \
