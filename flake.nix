@@ -57,7 +57,7 @@
 
         nightly = makeImage {
           name = "maa-cli-nix-nightly";
-          maa-cli-pkg = nurPkgs.maa-cli-nightly; # Nightly build from NUR (Beta Rust toolchain)
+          maa-cli-pkg = nurPkgs.maa-cli; # Nightly build from NUR (updates faster than nixpkgs)
         };
       }
     );
