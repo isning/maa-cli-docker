@@ -31,7 +31,7 @@
           tzdata        # Provides timezone support
         ];
 
-        makeImage = { name, maa-cli-pkg, fromImage ? null, entrypoint ? null }: pkgs.dockerTools.buildLayeredImage {
+        makeImage = { name, maa-cli-pkg, fromImage ? null }: pkgs.dockerTools.buildLayeredImage {
           inherit name fromImage;
           tag = "latest";
 
@@ -40,7 +40,6 @@
 
           config = {
             Cmd = [ "${pkgs.bash}/bin/bash" ];
-            Entrypoint = if entrypoint != null then [ "${entrypoint}" ] else null;
             Env = [
               "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
               # Override at runtime with -e TZ=<your-timezone> if needed
@@ -92,19 +91,6 @@
               install -m755 "$binary" $out/bin/maa
             '';
           };
-
-        # Entrypoint for Debian images: installs MaaCore on first container startup.
-        # Set MAA_SKIP_INSTALL=1 to bypass (e.g. for smoke tests).
-        debianEntrypoint = pkgs.writeShellScript "maa-entrypoint" ''
-          if [ -z "''${MAA_SKIP_INSTALL:-}" ]; then
-            MAA_DATA="''${XDG_DATA_HOME:-''${HOME:-/root}/.local/share}/maa"
-            if [ ! -d "''${MAA_DATA}/MaaCore" ]; then
-              echo "Installing MaaCore..." >&2
-              maa install
-            fi
-          fi
-          exec "$@"
-        '';
 
         # Script that refreshes docker-images.lock.json with current Debian image digests
         # and the latest maa-cli release info.
@@ -202,14 +188,12 @@
           name = "maa-cli-debian";
           maa-cli-pkg = fetchedMaaCli;
           fromImage = pullDebianBase "bookworm";
-          entrypoint = debianEntrypoint;
         };
 
         debian-trixie = makeImage {
           name = "maa-cli-debian";
           maa-cli-pkg = fetchedMaaCli;
           fromImage = pullDebianBase "trixie";
-          entrypoint = debianEntrypoint;
         };
 
         inherit update-debian-hashes;

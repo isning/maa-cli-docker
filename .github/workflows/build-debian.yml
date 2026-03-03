@@ -1,0 +1,57 @@
+name: Build Debian images
+
+on:
+  # Run daily at 01:00 UTC (after update-flake at 00:00) to keep MaaCore up-to-date
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build and push Debian image (${{ matrix.codename }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        codename: [bookworm, trixie]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v14
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Nix base image (maa-cli binary + Debian userland)
+        run: nix build .#packages.x86_64-linux.debian-${{ matrix.codename }} --out-link result-base
+
+      - name: Load base image
+        run: docker load < result-base
+
+      - name: Build final image with MaaCore baked in
+        run: |
+          docker build \
+            --build-arg BASE=maa-cli-debian:latest \
+            -f Dockerfile.debian \
+            -t ghcr.io/${{ github.repository_owner }}/maa-cli-debian:${{ matrix.codename }} \
+            .
+
+      - name: Smoke test
+        # If this step fails the push is automatically skipped (no continue-on-error).
+        run: |
+          docker run --rm \
+            ghcr.io/${{ github.repository_owner }}/maa-cli-debian:${{ matrix.codename }} \
+            maa --version
+
+      - name: Push image
+        run: docker push ghcr.io/${{ github.repository_owner }}/maa-cli-debian:${{ matrix.codename }}
