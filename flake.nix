@@ -35,17 +35,11 @@
           inherit name;
           tag = "latest";
 
-          # K8s args depend on /bin/sh, so we explicitly create a symlink
-          extraCommands = ''
-            mkdir -p bin
-            ln -s ${pkgs.bash}/bin/bash bin/sh
-          '';
-
           # Specific components included in the image (strictly as needed)
           contents = [ maa-cli-pkg ] ++ commonContents;
 
           config = {
-            Cmd = [ "/bin/sh" ];
+            Cmd = [ "${pkgs.bash}/bin/bash" ];
             Env = [
               "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
               # Override at runtime with -e TZ=<your-timezone> if needed
