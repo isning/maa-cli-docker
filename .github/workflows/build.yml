@@ -28,11 +28,11 @@ jobs:
             system: aarch64-linux
             runner: ubuntu-24.04-arm
             arch: arm64
-          - variant: nightly
+          - variant: cryolitia
             system: x86_64-linux
             runner: ubuntu-latest
             arch: amd64
-          - variant: nightly
+          - variant: cryolitia
             system: aarch64-linux
             runner: ubuntu-24.04-arm
             arch: arm64
@@ -52,9 +52,9 @@ jobs:
             echo "image_name=${{ github.repository_owner }}/maa-cli-nix" >> "$GITHUB_OUTPUT"
             echo "local_tag=maa-cli-nix:latest" >> "$GITHUB_OUTPUT"
           else
-            echo "nix_attr=nightly" >> "$GITHUB_OUTPUT"
-            echo "image_name=${{ github.repository_owner }}/maa-cli-nix-nightly" >> "$GITHUB_OUTPUT"
-            echo "local_tag=maa-cli-nix-nightly:latest" >> "$GITHUB_OUTPUT"
+            echo "nix_attr=cryolitia" >> "$GITHUB_OUTPUT"
+            echo "image_name=${{ github.repository_owner }}/maa-cli-nix-cryolitia" >> "$GITHUB_OUTPUT"
+            echo "local_tag=maa-cli-nix-cryolitia:latest" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build Docker image with Nix
@@ -91,7 +91,7 @@ jobs:
       matrix:
         variant:
           - stable
-          - nightly
+          - cryolitia
 
     steps:
       - name: Set image name
@@ -100,7 +100,7 @@ jobs:
           if [ "${{ matrix.variant }}" = "stable" ]; then
             echo "image_name=${{ github.repository_owner }}/maa-cli-nix" >> "$GITHUB_OUTPUT"
           else
-            echo "image_name=${{ github.repository_owner }}/maa-cli-nix-nightly" >> "$GITHUB_OUTPUT"
+            echo "image_name=${{ github.repository_owner }}/maa-cli-nix-cryolitia" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Log in to GHCR

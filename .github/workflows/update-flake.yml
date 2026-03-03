@@ -1,7 +1,7 @@
 name: Update flake.lock
 
 on:
-  # Run every day at 00:00 UTC to keep nightly up to date
+  # Run every day at 00:00 UTC to keep cryolitia up to date
   schedule:
     - cron: '0 0 * * *'
   workflow_dispatch:
@@ -47,15 +47,15 @@ jobs:
           docker load < result-stable
           docker run --rm maa-cli-nix:latest maa --version
 
-      - name: Build nightly image
+      - name: Build cryolitia image
         if: steps.update.outputs.updated == 'true'
-        run: nix build .#packages.x86_64-linux.nightly --out-link result-nightly
+        run: nix build .#packages.x86_64-linux.cryolitia --out-link result-cryolitia
 
-      - name: Smoke test nightly image
+      - name: Smoke test cryolitia image
         if: steps.update.outputs.updated == 'true'
         run: |
-          docker load < result-nightly
-          docker run --rm maa-cli-nix-nightly:latest maa --version
+          docker load < result-cryolitia
+          docker run --rm maa-cli-nix-cryolitia:latest maa --version
 
       - name: Push to main
         if: steps.update.outputs.updated == 'true'

@@ -22,7 +22,7 @@
         pkgs = nixpkgs.legacyPackages.${system};
         nurPkgs = nur-packages.packages.${system};
 
-        # Common image layers shared between stable and nightly images
+        # Common image layers shared between stable and cryolitia images
         commonContents = with pkgs; [
           android-tools # Required: provides adb for connecting to Redroid
           coreutils     # Provides sleep, echo, etc. for K8s startup scripts
@@ -55,9 +55,9 @@
           maa-cli-pkg = pkgs.maa-cli; # Official maa-cli maintained in Nixpkgs
         };
 
-        nightly = makeImage {
-          name = "maa-cli-nix-nightly";
-          maa-cli-pkg = nurPkgs.maa-cli; # Nightly build from NUR (updates faster than nixpkgs)
+        cryolitia = makeImage {
+          name = "maa-cli-nix-cryolitia";
+          maa-cli-pkg = nurPkgs.maa-cli; # Cryolitia build from NUR (updates faster than nixpkgs)
         };
       }
     );
