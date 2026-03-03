@@ -1,9 +1,9 @@
 name: Update flake.lock
 
 on:
-  # Run every Monday at 00:00 UTC
+  # Run every day at 00:00 UTC to keep nightly up to date
   schedule:
-    - cron: '0 0 * * 1'
+    - cron: '0 0 * * *'
   workflow_dispatch:
 
 jobs:
@@ -30,6 +30,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: 'chore: update flake.lock'
           title: 'chore: update flake.lock'
-          body: 'Automated weekly update of `flake.lock` by GitHub Actions.'
+          body: 'Automated daily update of `flake.lock` by GitHub Actions.'
           branch: update-flake-lock
           delete-branch: true
