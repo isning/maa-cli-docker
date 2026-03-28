@@ -100,11 +100,11 @@
         "rust-overlay": "rust-overlay_2"
       },
       "locked": {
-        "lastModified": 1774349364,
-        "narHash": "sha256-MmRjFYTkHHz1XVDX4KNL57svVNZq8nD9UdqS7XqAW9E=",
+        "lastModified": 1774583033,
+        "narHash": "sha256-9H7XNUIbh9zj3oE75Loql/dmn4HThJ+tqLQBGQtGMEE=",
         "owner": "Cryolitia",
         "repo": "nur-packages",
-        "rev": "ea72b0745e7ff5155f5ece4b5117a6ff4932bb48",
+        "rev": "a14d977b1ee4a98d59f5c60b2a93d8b1ae858e9b",
         "type": "github"
       },
       "original": {
@@ -188,11 +188,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1773975983,
-        "narHash": "sha256-zrRVwdfhDdohANqEhzY/ydeza6EXEi8AG6cyMRNYT9Q=",
+        "lastModified": 1774581174,
+        "narHash": "sha256-258qgkMkYPkJ9qpIg63Wk8GoIbVjszkGGPU1wbVHYTk=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "cc80954a95f6f356c303ed9f08d0b63ca86216ac",
+        "rev": "a313afc75b85fc77ac154bf0e62c36f68361fd0b",
         "type": "github"
       },
       "original": {
