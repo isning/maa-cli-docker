@@ -1,13 +1,13 @@
 {
   "maa-cli": {
-    "version": "0.7.3",
+    "version": "0.7.4",
     "amd64": {
-      "url": "https://github.com/MaaAssistantArknights/maa-cli/releases/download/v0.7.3/maa_cli-v0.7.3-x86_64-unknown-linux-gnu.tar.gz",
-      "sha256": "sha256-mhTA49mnUkE6Kyeb7bIU8aINbImui6UM6z17SZZ+V8c="
+      "url": "https://github.com/MaaAssistantArknights/maa-cli/releases/download/v0.7.4/maa_cli-v0.7.4-x86_64-unknown-linux-gnu.tar.gz",
+      "sha256": "sha256-XQO+3g+7Zfq/0QeIjlfXz3nRU7JDnfMZLPzQQIbIyMY="
     },
     "arm64": {
-      "url": "https://github.com/MaaAssistantArknights/maa-cli/releases/download/v0.7.3/maa_cli-v0.7.3-aarch64-unknown-linux-gnu.tar.gz",
-      "sha256": "sha256-yBGyyIeY03tQuujJ7TDGRje371+1GOPLLJdGuhH7O14="
+      "url": "https://github.com/MaaAssistantArknights/maa-cli/releases/download/v0.7.4/maa_cli-v0.7.4-aarch64-unknown-linux-gnu.tar.gz",
+      "sha256": "sha256-aQAKMjOYUiAKwi1NfMSg6hBpLt0FfBTjlWFdQ8xTDis="
     }
   },
   "amd64": {
