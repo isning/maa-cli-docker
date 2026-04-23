@@ -100,11 +100,11 @@
         "rust-overlay": "rust-overlay_2"
       },
       "locked": {
-        "lastModified": 1776397892,
-        "narHash": "sha256-MZZHx6eij+jv+gmgwNeBxLAsEVqgPehKsZeFFiQhN08=",
+        "lastModified": 1776829808,
+        "narHash": "sha256-OiWsJxjT9VYCt3DRIBRLLH1RLBr71mCKLJAFoL6CjoU=",
         "owner": "Cryolitia",
         "repo": "nur-packages",
-        "rev": "2764b67153216b8adb8a1e151f4c16174398c2af",
+        "rev": "6021a0807b5dfdab45420a2ca02e2359904b834f",
         "type": "github"
       },
       "original": {

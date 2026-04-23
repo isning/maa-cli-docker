@@ -12,22 +12,22 @@
   },
   "amd64": {
     "bookworm": {
-      "imageDigest": "sha256:4724b8cc51e33e398f0e2e15e18d5ec2851ff0c2280647e1310bc1642182655d",
-      "sha256": "sha256-YYmbcArCA7iJnm9GAJvZ+6YVYvxpe++aH+EHrxvZYo8="
+      "imageDigest": "sha256:f9c6a2fd2ddbc23e336b6257a5245e31f996953ef06cd13a59fa0a1df2d5c252",
+      "sha256": "sha256-/FRXz2x8bg9YopQWx7nbyhsKMcF3OH1Eg9ajDhhbzRg="
     },
     "trixie": {
-      "imageDigest": "sha256:4ffb3a1511099754cddc70eb1b12e50ffdb67619aa0ab6c13fcd800a78ef7c7a",
-      "sha256": "sha256-EU2yS1NGZoXW8kBERwArjJyET79pKDl4+50iuY1a1Bo="
+      "imageDigest": "sha256:cedb1ef40439206b673ee8b33a46a03a0c9fa90bf3732f54704f99cb061d2c5a",
+      "sha256": "sha256-QtMRovdjoWAhf8v96RNz0Cpnqx8THdblIaENoKBuRks="
     }
   },
   "arm64": {
     "bookworm": {
-      "imageDigest": "sha256:4724b8cc51e33e398f0e2e15e18d5ec2851ff0c2280647e1310bc1642182655d",
-      "sha256": "sha256-ok9TQ6xFL2hE6xuxiGBtO0I7FRPJz9iXL+3AHzAETzM="
+      "imageDigest": "sha256:f9c6a2fd2ddbc23e336b6257a5245e31f996953ef06cd13a59fa0a1df2d5c252",
+      "sha256": "sha256-m8b/TICGfh2yQE4TM9ueUnds3jHHKaMy1yf1KtCOb7w="
     },
     "trixie": {
-      "imageDigest": "sha256:4ffb3a1511099754cddc70eb1b12e50ffdb67619aa0ab6c13fcd800a78ef7c7a",
-      "sha256": "sha256-afcu/ColFXb4x7I1bWix3KP3ZRrUGSeMPepXfUEx6M8="
+      "imageDigest": "sha256:cedb1ef40439206b673ee8b33a46a03a0c9fa90bf3732f54704f99cb061d2c5a",
+      "sha256": "sha256-1xiRDKfWYwX+jwxZyiu4NNaZoP67gEJ0aFVm+ZFeQU4="
     }
   }
 }
