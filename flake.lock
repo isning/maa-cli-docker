@@ -42,11 +42,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1779357205,
-        "narHash": "sha256-cCO8aTqss5x9Ky8GWkpY0Hy5fyTZEbtifSUV8QjSzic=",
+        "lastModified": 1779508470,
+        "narHash": "sha256-Ap9KJX+5xHIn3bPIpfNgT6MEXdAECECwo4/rmlQD74M=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "f83fc3c307e74bc5fd5adb7eb6b8b13ffd2a36e1",
+        "rev": "29916453413845e54a65b8a1cf996842300cd299",
         "type": "github"
       },
       "original": {
@@ -100,11 +100,11 @@
         "rust-overlay": "rust-overlay_2"
       },
       "locked": {
-        "lastModified": 1779421738,
-        "narHash": "sha256-8Ug83bVNyIx22rGql6zU7UNN72r05RXkvbA3uJNyob8=",
+        "lastModified": 1779509026,
+        "narHash": "sha256-Xws/YixypVs6HzEmu0MMMWVtY1Iq+8/p8sXLamKcMkI=",
         "owner": "Cryolitia",
         "repo": "nur-packages",
-        "rev": "81cda691782c6d1421ab77c27472949ac7eb0978",
+        "rev": "551cdc51eb360cb4425f40072f102de5497e50a0",
         "type": "github"
       },
       "original": {
